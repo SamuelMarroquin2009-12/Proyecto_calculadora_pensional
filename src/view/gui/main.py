@@ -23,6 +23,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
 
 from controller.pension_controller import (
     CalculadoraPensionController,
@@ -154,18 +155,34 @@ class CalculadoraPensionApp(App):
         return fila
 
     def _crear_panel_resultados(self):
+        # Label no tiene la propiedad background_color: el fondo se dibuja
+        # manualmente en el canvas y se mantiene sincronizado con el tamaño
+        # y la posición del widget.
         self.panel_resultados = Label(
             text="Complete los datos y presione CALCULAR PENSIÓN.",
             size_hint_y=None,
             height=260,
             valign="top",
             color=COLOR_TEXTO,
-            background_color=COLOR_FONDO,
+        )
+        with self.panel_resultados.canvas.before:
+            self._color_fondo_resultados = Color(*COLOR_FONDO)
+            self._rect_fondo_resultados = Rectangle(
+                pos=self.panel_resultados.pos, size=self.panel_resultados.size
+            )
+        self.panel_resultados.bind(
+            pos=self._actualizar_fondo_resultados,
+            size=self._actualizar_fondo_resultados,
         )
         self.panel_resultados.bind(size=self.panel_resultados.setter("text_size"))
         contenedor = ScrollView(size_hint_y=None, height=280)
         contenedor.add_widget(self.panel_resultados)
         return contenedor
+
+    def _actualizar_fondo_resultados(self, *_):
+        """Mantiene el rectángulo de fondo alineado con el widget."""
+        self._rect_fondo_resultados.pos = self.panel_resultados.pos
+        self._rect_fondo_resultados.size = self.panel_resultados.size
 
     # ------------------------------------------------------------------
     # Acciones del usuario
