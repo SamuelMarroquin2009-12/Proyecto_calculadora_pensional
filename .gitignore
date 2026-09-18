@@ -19,3 +19,11 @@ bin/
 
 # Kivy
 *.log
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+dist/
+build/
