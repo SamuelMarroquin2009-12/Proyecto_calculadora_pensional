@@ -4,10 +4,9 @@ Calculadora de pensión de vejez para el Régimen de Prima Media en Colombia,
 desarrollada en Python con **dos interfaces de usuario (consola y GUI con
 Kivy)** que comparten la misma lógica de negocio.
 
-## Creadores del proyecto
+## Creador del proyecto
 
 - **Samuel Alejandro Marroquín Garcés**
-- (Integrante 2 - agregar nombre y código) <!-- completar antes de entregar -->
 
 Repositorio (fork): https://github.com/SamuelMarroquin2009-12/Proyecto_calculadora_pensional
 
@@ -64,7 +63,9 @@ Proyecto_calculadora_pensional/
 │
 ├── tests/
 │   ├── test_pension.py      -> Pruebas del modelo (casos del Excel)
-│   └── test_controller.py   -> Pruebas del controlador
+│   ├── test_controller.py   -> Pruebas del controlador
+│   └── test_gui.py          -> Pruebas de la GUI (validación de campos,
+│                                simulador de semanas y guardado en archivo)
 │
 └── README.md
 ```
@@ -74,8 +75,12 @@ Proyecto_calculadora_pensional/
 - **IBC últimos 10 años** y **IBC toda la vida laboral** (pesos): el sistema
   usa el valor más favorable como IBL.
 - **Salario mínimo legal vigente**: debe ser mayor que cero.
-- **Semanas cotizadas**: mínimo 1300 para tener derecho a pensión.
-- **Edad**: mínimo 57 años (mujeres) o 62 años (hombres).
+- **Semanas cotizadas**: mínimo 1300 para tener derecho a pensión. Debe
+  ser un número entero (`1300` es válido, `1300.5` se rechaza con un
+  mensaje amigable, tanto en consola como en la GUI).
+- **Edad**: mínimo 57 años (mujeres) o 62 años (hombres). También debe
+  ser un número entero (`62.9` se rechaza; `62.0` sí se acepta, porque
+  no tiene parte decimal).
 - **Sexo**: `M` (hombre) o `F` (mujer).
 
 ## Proceso
@@ -188,7 +193,15 @@ python src/view/console/main.py
 python -m unittest discover -s tests -v
 ```
 
-Se espera: `Ran 25 tests ... OK`
+Se espera: `Ran 40 tests ... OK`
+
+`tests/test_pension.py` (18 pruebas) y `tests/test_controller.py` (7
+pruebas) no dependen de Kivy. `tests/test_gui.py` (15 pruebas) construye
+la app real de forma headless (sin mostrar ventana) para probar la
+validación de campos enteros, el simulador de semanas adicionales y el
+guardado en archivo; si Kivy no está instalado o el entorno no tiene
+pantalla/GL disponible, esas 15 pruebas se omiten automáticamente
+(`skipped`) en lugar de romper el resto de la suite.
 
 ---
 

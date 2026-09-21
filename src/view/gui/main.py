@@ -291,17 +291,17 @@ class CalculadoraPensionApp(App):
         """Convierte el texto de los campos a un DatosPension."""
         ibc_10 = self._leer_campo_numerico(clave="ibc_ultimos_10")
         ibc_vida = self._leer_campo_numerico(clave="ibc_toda_vida")
-        salario = self._leer_campo_numerico(clave="salario_minimo")
-        semanas = self._leer_campo_numerico(clave="semanas")
-        edad = self._leer_campo_numerico(clave="edad")
+        salario = self._leer_campo_entero(clave="salario_minimo")
+        semanas = self._leer_campo_entero(clave="semanas")
+        edad = self._leer_campo_entero(clave="edad")
         sexo = self._leer_sexo()
 
         return self.controlador.construir_datos(
             ibc_ultimos_10=ibc_10,
             ibc_toda_vida=ibc_vida,
-            salario_minimo_legal=int(salario),
-            semanas_cotizadas=int(semanas),
-            edad=int(edad),
+            salario_minimo_legal=salario,
+            semanas_cotizadas=semanas,
+            edad=edad,
             sexo=sexo,
         )
 
@@ -315,6 +315,23 @@ class CalculadoraPensionApp(App):
             raise ValueError(
                 f"{MENSAJE_ENTRADA_INVALIDA}\nCampo inválido: '{clave}' = '{texto}'."
             ) from error
+
+    def _leer_campo_entero(self, clave: str) -> int:
+        """Lee un campo que debe representar un número entero.
+
+        A diferencia de un simple ``int(valor)`` (que trunca en silencio,
+        por ejemplo 1300.9 -> 1300), aquí un valor con parte decimal
+        distinta de cero se rechaza con un mensaje amigable, igual que ya
+        lo hace la vista de consola (``solicitar_entero``).
+        """
+        valor = self._leer_campo_numerico(clave=clave)
+        if valor != int(valor):
+            raise ValueError(
+                f"{MENSAJE_ENTRADA_INVALIDA}\n"
+                f"Campo '{clave}' = '{valor}': se esperaba un número entero "
+                "(sin decimales)."
+            )
+        return int(valor)
 
     def _leer_sexo(self) -> str:
         texto = self.spinner_sexo.text
@@ -382,7 +399,10 @@ class CalculadoraPensionApp(App):
     # ------------------------------------------------------------------
     def guardar_resultado(self) -> None:
         if self._ultimo_resultado is None:
-            self._mostrar_error(mensaje="Primero debe calcular una pensión.")
+            self._mostrar_error(
+                mensaje="Primero debe calcular una pensión.",
+                titulo="No fue posible guardar el resultado",
+            )
             return
 
         ruta_archivo = os.path.join(self.user_data_dir, NOMBRE_ARCHIVO_EXPORTADO)
@@ -400,7 +420,8 @@ class CalculadoraPensionApp(App):
                     f"Por qué: {error}.\n"
                     "Solución: verifique permisos de escritura en el "
                     "computador o dispositivo."
-                )
+                ),
+                titulo="No fue posible guardar el resultado",
             )
             return
 
@@ -432,13 +453,15 @@ class CalculadoraPensionApp(App):
         self.panel_resultados.color = COLOR_RESULTADO
         self.panel_resultados.bold = True
 
-    def _mostrar_error(self, mensaje: str) -> None:
+    def _mostrar_error(
+        self, mensaje: str, titulo: str = "No fue posible calcular la pensión"
+    ) -> None:
         """Muestra un popup con el error, cómo se soluciona y dónde ayudarse."""
         contenido = BoxLayout(orientation="vertical", padding=10, spacing=10)
         contenido.add_widget(
             Label(
                 text=mensaje + "\n\n¿Sigue con problemas? Revise el README del "
-                "proyecto o contacte al equipo.",
+                "proyecto para más ayuda.",
                 color=COLOR_TEXTO,
                 text_size=(320, None),
             )
@@ -447,7 +470,7 @@ class CalculadoraPensionApp(App):
         contenido.add_widget(boton_cerrar)
 
         popup = Popup(
-            title="No fue posible calcular la pensión",
+            title=titulo,
             content=contenido,
             size_hint=(None, None),
             size=(380, 260),
