@@ -45,6 +45,8 @@ MENSAJES_ERROR = {
         "El sexo debe ser 'M' (hombre) o 'F' (mujer).",
 }
 
+# Mensaje genérico para errores de formato (no de negocio), como texto
+# no numérico o campos vacíos; ambas vistas lo reutilizan tal cual.
 MENSAJE_ENTRADA_INVALIDA = (
     "Entrada no válida: ingrese solo valores numéricos "
     "(use punto para decimales)."
@@ -63,7 +65,12 @@ class CalculadoraPensionController:
         edad: int,
         sexo: str,
     ) -> DatosPension:
-        """Crea un DatosPension a partir de valores ya convertidos."""
+        """Crea un DatosPension a partir de valores ya convertidos.
+
+        Normaliza el sexo (quita espacios y pasa a mayúscula) para que
+        a ambas vistas les dé igual si el usuario escribió "m", " M "
+        o "M"; la validación de que sea 'M' o 'F' la hace el modelo.
+        """
         return DatosPension(
             ibc_ultimos_10=ibc_ultimos_10,
             ibc_toda_vida=ibc_toda_vida,
@@ -78,14 +85,27 @@ class CalculadoraPensionController:
         return logica_pension.calcular_pension(datos=datos)
 
     def mensaje_de_error(self, error: Exception) -> str:
-        """Devuelve un mensaje amigable para una excepción conocida."""
+        """Devuelve un mensaje amigable para una excepción conocida.
+
+        Recorre MENSAJES_ERROR buscando el primer tipo de excepción
+        compatible con `error` (por eso usa isinstance y no una simple
+        búsqueda por clave exacta, para cubrir también subclases). Si
+        no encuentra ninguna coincidencia, cae al mensaje genérico de
+        error inesperado en vez de fallar.
+        """
         for tipo_excepcion, mensaje in MENSAJES_ERROR.items():
             if isinstance(error, tipo_excepcion):
                 return mensaje
         return f"Ocurrió un error inesperado: {error}"
 
     def formatear_resultado(self, resultado: ResultadoPension) -> List[str]:
-        """Devuelve las líneas de texto listas para mostrar al usuario."""
+        """Devuelve las líneas de texto listas para mostrar al usuario.
+
+        Método compartido por la consola y la GUI: cada vista decide
+        cómo presentar estas líneas (print simple en consola, o texto
+        de un Label con formato de miles en la GUI), pero el contenido
+        y el orden de la información se definen una sola vez aquí.
+        """
         return [
             f"IBL calculado: ${resultado.ibl:,.2f}",
             f"Salarios mínimos (S): {resultado.relacion:.2f}",
