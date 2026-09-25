@@ -10,17 +10,23 @@ por lo que no debe depender de ninguna librería de interfaz.
 from dataclasses import dataclass
 
 
-SEMANAS_MINIMAS = 1300
-SEMANAS_POR_INCREMENTO = 50
-INCREMENTO_PORCENTUAL = 1.5
+# ---------------------------------------------------------------------------
+# Constantes del régimen (Régimen de Prima Media - Colombia).
+# Centralizarlas aquí evita "números mágicos" repartidos por el código
+# y permite ajustarlas en un solo lugar si cambia la normativa.
+# ---------------------------------------------------------------------------
 
-TASA_REEMPLAZO_INICIAL = 65.5
-FACTOR_REDUCCION_POR_SALARIO = 0.5
-TASA_REEMPLAZO_MINIMA = 55
-TASA_REEMPLAZO_MAXIMA = 80
+SEMANAS_MINIMAS = 1300              # Semanas cotizadas mínimas para tener derecho a pensión.
+SEMANAS_POR_INCREMENTO = 50         # Tamaño de cada bloque de semanas adicionales.
+INCREMENTO_PORCENTUAL = 1.5         # Puntos que sube la tasa por cada bloque completo.
 
-EDAD_MINIMA_MUJER = 57
-EDAD_MINIMA_HOMBRE = 62
+TASA_REEMPLAZO_INICIAL = 65.5       # Porcentaje base de reemplazo antes de ajustes.
+FACTOR_REDUCCION_POR_SALARIO = 0.5  # Cuánto baja la tasa por cada salario mínimo de IBL.
+TASA_REEMPLAZO_MINIMA = 55          # Piso legal de la tasa de reemplazo.
+TASA_REEMPLAZO_MAXIMA = 80          # Techo legal de la tasa de reemplazo.
+
+EDAD_MINIMA_MUJER = 57              # Edad mínima de pensión para mujeres.
+EDAD_MINIMA_HOMBRE = 62             # Edad mínima de pensión para hombres.
 
 
 @dataclass
@@ -176,30 +182,54 @@ class SexoInvalido(ErrorCalculoPension):
 
 
 def calcular_ibl(ibc_ultimos_10: float, ibc_toda_vida: float) -> float:
-    """Retorna el ingreso base de liquidación (el IBC más favorable)."""
+    """Retorna el ingreso base de liquidación (el IBC más favorable).
+
+    La ley permite liquidar la pensión con el IBC que resulte más alto
+    entre los últimos 10 años y toda la vida laboral; por eso se usa
+    max() en vez de, por ejemplo, un promedio.
+    """
     return max(ibc_ultimos_10, ibc_toda_vida)
 
 
 def calcular_relacion_ibl_smlmv(
     ingreso_base_liquidacion: float, salario_minimo_legal: int
 ) -> float:
-    """Retorna cuántos salarios mínimos representa el IBL."""
+    """Retorna cuántos salarios mínimos representa el IBL.
+
+    Este valor (a veces llamado "S" en la fórmula legal) es el insumo
+    para calcular_r_base_55: mientras más salarios mínimos gane la
+    persona, menor es su tasa de reemplazo base.
+    """
     return ingreso_base_liquidacion / salario_minimo_legal
 
 
 def calcular_r_base_55(relacion_ibl_smlmv: float) -> float:
-    """Calcula la tasa base de reemplazo con piso del 55%."""
+    """Calcula la tasa base de reemplazo con piso del 55%.
+
+    Parte de un 65,5% (TASA_REEMPLAZO_INICIAL) y le resta medio punto
+    porcentual por cada salario mínimo que representa el IBL, sin
+    bajar nunca del piso legal del 55%.
+    """
     tasa = TASA_REEMPLAZO_INICIAL - relacion_ibl_smlmv * FACTOR_REDUCCION_POR_SALARIO
     return max(tasa, TASA_REEMPLAZO_MINIMA)
 
 
 def calcular_semanas_adicionales(semanas_cotizadas: int) -> int:
-    """Retorna las semanas cotizadas por encima de las mínimas."""
+    """Retorna las semanas cotizadas por encima de las mínimas.
+
+    Solo las semanas que superan SEMANAS_MINIMAS (1300) cuentan como
+    "adicionales" y son las que pueden generar incremento en la tasa.
+    """
     return max(semanas_cotizadas - SEMANAS_MINIMAS, 0)
 
 
 def calcular_incremento_porcentual(semanas_adicionales: int) -> float:
-    """1.5 puntos porcentuales por cada bloque completo de 50 semanas."""
+    """1.5 puntos porcentuales por cada bloque completo de 50 semanas.
+
+    Se usa división entera (bloques_completos) a propósito: un bloque
+    incompleto (por ejemplo 30 semanas adicionales de un bloque de 50)
+    no genera ningún incremento, tal como lo exige la regla de negocio.
+    """
     bloques_completos = int(semanas_adicionales / SEMANAS_POR_INCREMENTO)
     return bloques_completos * INCREMENTO_PORCENTUAL
 
@@ -210,7 +240,11 @@ def calcular_r_total(tasa_reemplazo_base: float, incremento: float) -> float:
 
 
 def cumple_requisitos(semanas_cotizadas: int, edad: int, sexo: str) -> bool:
-    """Verifica si la persona cumple derecho a pensión de vejez."""
+    """Verifica si la persona cumple derecho a pensión de vejez.
+
+    Ambos requisitos (semanas mínimas Y edad mínima según el sexo) se
+    deben cumplir simultáneamente; no basta con cumplir solo uno.
+    """
     tiene_semanas_minimas = semanas_cotizadas >= SEMANAS_MINIMAS
     tiene_edad_minima = (sexo == "F" and edad >= EDAD_MINIMA_MUJER) or (
         sexo == "M" and edad >= EDAD_MINIMA_HOMBRE
@@ -225,6 +259,7 @@ def cumple_requisitos(semanas_cotizadas: int, edad: int, sexo: str) -> bool:
 
 
 def validar_ibl(datos: DatosPension) -> None:
+    """Verifica que el IBL calculado no sea negativo ni cero."""
     ibl = calcular_ibl(datos.ibc_ultimos_10, datos.ibc_toda_vida)
 
     if ibl < 0:
@@ -235,6 +270,7 @@ def validar_ibl(datos: DatosPension) -> None:
 
 
 def validar_salario_minimo(datos: DatosPension) -> None:
+    """Verifica que el salario mínimo legal vigente sea mayor que cero."""
     if datos.salario_minimo_legal == 0:
         raise SalarioMinimoLegalVigenteCero()
 
@@ -243,6 +279,7 @@ def validar_salario_minimo(datos: DatosPension) -> None:
 
 
 def validar_semanas(datos: DatosPension) -> None:
+    """Verifica que las semanas cotizadas sean válidas y suficientes."""
     if datos.semanas_cotizadas < 0:
         raise SemanasNegativas(semanas_cotizadas=datos.semanas_cotizadas)
 
@@ -251,6 +288,7 @@ def validar_semanas(datos: DatosPension) -> None:
 
 
 def validar_edad(datos: DatosPension) -> None:
+    """Verifica que la edad cumpla el mínimo legal según el sexo."""
     if datos.sexo == "F" and datos.edad < EDAD_MINIMA_MUJER:
         raise EdadInsuficiente(edad=datos.edad, sexo=datos.sexo)
 
@@ -259,12 +297,19 @@ def validar_edad(datos: DatosPension) -> None:
 
 
 def validar_sexo(datos: DatosPension) -> None:
+    """Verifica que el sexo sea uno de los dos valores permitidos."""
     if datos.sexo not in ("M", "F"):
         raise SexoInvalido(sexo=datos.sexo)
 
 
 def validar_datos(datos: DatosPension) -> None:
-    """Ejecuta, en orden, todas las validaciones de negocio."""
+    """Ejecuta, en orden, todas las validaciones de negocio.
+
+    El orden importa para la experiencia del usuario: primero se
+    valida el IBL y el salario mínimo (datos base del cálculo), luego
+    semanas, edad y sexo (requisitos de elegibilidad), de modo que el
+    primer error que vea el usuario sea siempre el más relevante.
+    """
     validar_ibl(datos)
     validar_salario_minimo(datos)
     validar_semanas(datos)
@@ -273,7 +318,17 @@ def validar_datos(datos: DatosPension) -> None:
 
 
 def calcular_pension(datos: DatosPension) -> ResultadoPension:
-    """Calcula la pensión estimada de vejez (Régimen de Prima Media)."""
+    """Calcula la pensión estimada de vejez (Régimen de Prima Media).
+
+    Orquesta, en orden, los pasos descritos en el README del proyecto:
+    1. Validar los datos de entrada.
+    2. Calcular el IBL (el IBC más favorable).
+    3. Calcular cuántos salarios mínimos representa ese IBL.
+    4. Calcular la tasa de reemplazo base (piso 55%).
+    5. Calcular semanas adicionales y su incremento en la tasa.
+    6. Calcular la tasa total (techo 80%) y la pensión final,
+       garantizando que nunca sea inferior a un salario mínimo.
+    """
     validar_datos(datos)
 
     ingreso_base_liquidacion = calcular_ibl(
@@ -297,6 +352,7 @@ def calcular_pension(datos: DatosPension) -> ResultadoPension:
         tasa_reemplazo_base=tasa_reemplazo_base, incremento=incremento
     )
 
+    # Garantía de pensión mínima: nunca puede ser inferior a un SMLMV.
     pension = round(
         max(
             ingreso_base_liquidacion * tasa_reemplazo_total / 100,
