@@ -19,6 +19,7 @@ from typing import Dict, Optional
 # Permite ejecutar el archivo directamente sin configurar Sources Root.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+# Widgets y utilidades de Kivy usados para construir la interfaz.
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -31,6 +32,8 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
 
+# La vista solo importa el controlador (y los tipos del modelo que
+# necesita para anotar variables); nunca calcula nada por sí misma.
 from controller.pension_controller import (
     CalculadoraPensionController,
     MENSAJE_ENTRADA_INVALIDA,
@@ -42,11 +45,12 @@ from model.logica_pension import DatosPension, ErrorCalculoPension, ResultadoPen
 # Presentación (nada de esto es lógica de negocio).
 # ---------------------------------------------------------------------------
 
-COLOR_PRIMARIO = (0.09, 0.45, 0.27, 1)
-COLOR_ERROR = (0.80, 0.20, 0.20, 1)
-COLOR_FONDO = (0.95, 0.96, 0.97, 1)
-COLOR_TEXTO = (0.12, 0.14, 0.16, 1)
-COLOR_RESULTADO = (0.07, 0.36, 0.22, 1)
+# Paleta de colores de la app en formato RGBA (valores entre 0 y 1, no 0-255).
+COLOR_PRIMARIO = (0.09, 0.45, 0.27, 1)    # Verde institucional: encabezado y botón principal.
+COLOR_ERROR = (0.80, 0.20, 0.20, 1)       # Rojo: reservado para resaltar errores.
+COLOR_FONDO = (0.95, 0.96, 0.97, 1)       # Gris muy claro: fondo del panel de resultados.
+COLOR_TEXTO = (0.12, 0.14, 0.16, 1)       # Casi negro: texto general, buen contraste.
+COLOR_RESULTADO = (0.07, 0.36, 0.22, 1)   # Verde oscuro: texto cuando el cálculo fue exitoso.
 
 TEXTO_INICIAL_RESULTADOS = (
     "Complete los datos y presione CALCULAR PENSIÓN.\n"
@@ -57,6 +61,10 @@ TEXTO_INICIAL_RESULTADOS = (
 MAXIMO_SEMANAS_SIMULADAS = 500
 NOMBRE_ARCHIVO_EXPORTADO = "resultado_pension.txt"
 
+# Cada tupla define un campo del formulario: (clave interna, etiqueta
+# visible al usuario, texto de ayuda/placeholder dentro del input).
+# La clave interna es la misma que espera el controlador al construir
+# los DatosPension, así que no debe cambiarse sin actualizar ambos lados.
 CAMPOS_DEFINICION = (
     ("ibc_ultimos_10", "IBC últimos 10 años ($):", "ej. 9800000"),
     ("ibc_toda_vida", "IBC toda la vida laboral ($):", "ej. 10000000"),
@@ -87,6 +95,12 @@ class CalculadoraPensionApp(App):
     # Construcción de la interfaz
     # ------------------------------------------------------------------
     def build(self) -> BoxLayout:
+        """Punto de entrada de Kivy: arma y devuelve el árbol de widgets.
+
+        Kivy llama a este método una sola vez al iniciar la app; el
+        BoxLayout resultante es la ventana completa, de arriba hacia
+        abajo: encabezado, formulario, botones, resultados y simulador.
+        """
         self.title = "Calculadora Pensional - Régimen de Prima Media"
 
         raiz = BoxLayout(orientation="vertical", padding=12, spacing=10)
@@ -155,6 +169,11 @@ class CalculadoraPensionApp(App):
         )
 
     def _crear_botones(self) -> BoxLayout:
+        """Crea la fila de acciones: calcular, limpiar y guardar en archivo.
+
+        El botón de guardar empieza deshabilitado porque no tiene sentido
+        exportar un resultado que todavía no existe.
+        """
         fila = BoxLayout(size_hint_y=None, height=52, spacing=10)
 
         boton_calcular = Button(
