@@ -4,11 +4,11 @@ Calculadora de pensión de vejez para el Régimen de Prima Media en Colombia,
 desarrollada en Python con **dos interfaces de usuario (consola y GUI con
 Kivy)** que comparten la misma lógica de negocio.
 
-## Creador del proyecto
+## Creadores del proyecto
 
 - **Samuel Alejandro Marroquín Garcés**
 - **Juan Pablo Gaviria Franco**
-Repositorio (fork): https://github.com/SamuelMarroquin2009-12/Proyecto_calculadora_pensional
+- **Repositorio (fork):** https://github.com/SamuelMarroquin2009-12/Proyecto_calculadora_pensional
 
 ## Descripción del proyecto
 
