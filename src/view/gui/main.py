@@ -31,6 +31,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.graphics import Color, Rectangle
+from kivy.core.window import Window
 
 # La vista solo importa el controlador (y los tipos del modelo que
 # necesita para anotar variables); nunca calcula nada por sí misma.
@@ -51,6 +52,17 @@ COLOR_ERROR = (0.80, 0.20, 0.20, 1)       # Rojo: reservado para resaltar errore
 COLOR_FONDO = (0.95, 0.96, 0.97, 1)       # Gris muy claro: fondo del panel de resultados.
 COLOR_TEXTO = (0.12, 0.14, 0.16, 1)       # Casi negro: texto general, buen contraste.
 COLOR_RESULTADO = (0.07, 0.36, 0.22, 1)   # Verde oscuro: texto cuando el cálculo fue exitoso.
+COLOR_TEXTO_CLARO = (0.95, 0.96, 0.97, 1) # Casi blanco: para texto sobre fondos oscuros (popups).
+
+# La suma de las alturas fijas (encabezado + botones + resultados +
+# simulador + paddings) más un formulario legible ronda los 800px. Sin
+# fijar un tamaño de ventana mayor al default de Kivy (800x600), el
+# ScrollView del formulario queda aplastado y sus campos casi no se ven.
+# minimum_width/minimum_height evita además que, al redimensionar, la
+# ventana vuelva a quedar más pequeña que el contenido.
+Window.size = (900, 820)
+Window.minimum_width = 760
+Window.minimum_height = 700
 
 TEXTO_INICIAL_RESULTADOS = (
     "Complete los datos y presione CALCULAR PENSIÓN.\n"
@@ -147,11 +159,13 @@ class CalculadoraPensionApp(App):
         return contenedor
 
     def _crear_etiqueta(self, texto: str) -> Label:
+        # Texto claro a propósito: este label no tiene fondo propio, así
+        # que se apoya en el fondo negro de la ventana (Kivy por defecto).
         return Label(
             text=texto,
             size_hint_y=None,
             height=44,
-            color=COLOR_TEXTO,
+            color=COLOR_TEXTO_CLARO,
             halign="left",
             valign="middle",
         )
@@ -481,7 +495,7 @@ class CalculadoraPensionApp(App):
             Label(
                 text=mensaje + "\n\n¿Sigue con problemas? Revise el README del "
                 "proyecto para más ayuda.",
-                color=COLOR_TEXTO,
+                color=COLOR_TEXTO_CLARO,
                 text_size=(320, None),
             )
         )
@@ -501,7 +515,7 @@ class CalculadoraPensionApp(App):
     def _mostrar_confirmacion(self, titulo: str, mensaje: str) -> None:
         contenido = BoxLayout(orientation="vertical", padding=10, spacing=10)
         contenido.add_widget(
-            Label(text=mensaje, color=COLOR_TEXTO, text_size=(320, None))
+            Label(text=mensaje, color=COLOR_TEXTO_CLARO, text_size=(320, None))
         )
         boton_cerrar = Button(text="Cerrar", size_hint_y=None, height=44)
         contenido.add_widget(boton_cerrar)
